@@ -1,5 +1,0 @@
-Main homepage, put some words on it
-Deploy to google
-have nattyb do some testing
-polish
-pass to others
