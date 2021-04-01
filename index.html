@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="description" content="Provides tracking information and analytics about the ThetaSwap crypto coin system. Theta and Tfuel prices and more." />
+    <meta name="author" content="TenthReality" />
+    <title>thetaindex.io - Theta Swap Index</title>
+    <link href="css/styles.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/js/all.min.js"
+        crossorigin="anonymous"></script>
+</head>
+
+<body class="sb-nav-fixed">
+    <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
+        <button class="btn btn-link btn-sm order-1 order-lg-0" id="sidebarToggle" href="#"><i
+                class="fas fa-bars"></i></button>
+        <a class="navbar-brand" href="/">thetaindex.io - Theta Swap Index</a>
+    </nav>
+    <div id="layoutSidenav">
+        <div id="layoutSidenav_nav">
+            <nav class="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">
+                <div class="sb-sidenav-menu">
+                    <div class="nav">
+                        <div class="input-group mb-2">
+                            <div class="input-group-prepend">
+                                <div class="input-group-text">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                        class="bi bi-search" viewBox="0 0 16 16">
+                                        <path
+                                            d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <input class="form-control" id="txtPairSearch" type="text" placeholder="Swap Search..">
+                        </div>
+                        <div style="max-height:860px; overflow:auto;">
+                            <table class="table table-sm table-dark table-striped table-hover" id="navItemList">
+                                <thead>
+                                    <tr>
+                                        <th>To</th>
+                                        <th>From</th>
+                                        <th>Last</th>
+                                        <th>USD</th>
+                                        <th>Swaps</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="coinListBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+            </nav>
+        </div>
+        <div id="layoutSidenav_content">
+            <main>
+                <div class="container-fluid" id="pnlLanding">
+                    <h1 class="mt-4">thetaindex.io</h1>
+
+                    <div class="row">
+                        <div class="col-xl-6">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-area mr-1"></i>
+                                    Theta Price
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="canThetaChart" width="100%" height="40"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-6">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-bar mr-1"></i>
+                                    Tfuel Price
+                                </div>
+                                <div class="card-body"><canvas id="canTfuelChart" width="100%" height="40"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="container-fluid collapse" id="pnlCoinReport">
+                    <h1 class="mt-4" id="txtSwapName">thetaindex.io</h1>
+
+                    <div class="row">
+                        <div class="col-xl-6">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-area mr-1"></i>
+                                
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="canTokenRatio" width="100%" height="40"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-6">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-bar mr-1"></i>
+                                  
+                                </div>
+                                <div class="card-body"><canvas id="canTokenPrice" width="100%" height="40"></canvas>
+                                </div>
+                            </div>
+                        </div>                       
+                    </div>
+                    <div class="row">
+                        <div class="col-xl-6">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-area mr-1"></i>
+                                
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="canReserve0" width="100%" height="40"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-6">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-bar mr-1"></i>
+                                  
+                                </div>
+                                <div class="card-body"><canvas id="canReserve1" width="100%" height="40"></canvas>
+                                </div>
+                            </div>
+                        </div> 
+                    </div>
+                    <div class="row">
+                        <div class="col-xl-3 col-md-6">
+                            <div class="card bg-secondary text-white mb-4">
+                                <div class="card-body">Coin A</div>
+                                <ul class="list-group" id="ulCoinReport">
+             
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="col-xl-3 col-md-6">
+                            <div class="card bg-secondary text-white mb-4">
+                                <div class="card-body">Coin B</div>
+                                <ul class="list-group" id="ulCoinReport2">
+             
+                                </ul>
+                            </div>
+                        </div>                        
+                        <div class="col-xl-3 col-md-6">
+                            <div class="card bg-secondary text-white mb-4">
+                                <div class="card-body">Swap Liquidity</div>
+                                <ul class="list-group" id="ulLiquidReport">
+
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+            <footer class="py-4 bg-light mt-auto">
+                <div class="container-fluid">
+                    <div class="d-flex align-items-center justify-content-between small">
+                        <div class="text-muted">Copyright &copy; Theta Market Index</div>
+
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"
+        integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg=="
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js"
+        crossorigin="anonymous"></script>
+    <script src="js/scripts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.js" crossorigin="anonymous"></script>
+</body>
+
+</html>
