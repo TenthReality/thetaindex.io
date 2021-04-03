@@ -171,9 +171,9 @@ function displayCoin(coin) {
           const toCAUrl = `https://explorer.thetatoken.org/account/${coinData.tokenAddress}`;
           const fromCAUrl = `https://explorer.thetatoken.org/account/${coinFromData.tokenAddress}`;
 
-
-          const toUrl = `https://swap.thetatoken.org/swap?tokenAddressInput=${coinData.tokenAddress}&tokenAddressOutput=${coinFromData.tokenAddress}`;
-          const fromUrl = `https://swap.thetatoken.org/swap?tokenAddressInput=${coinFromData.tokenAddress}&tokenAddressOutput=${coinData.tokenAddress}`;
+          //toLower the token addresses here, quirk of swap website, instead of obeying the contract casing it to-lowers everything
+          const toUrl = `https://swap.thetatoken.org/swap?tokenAddressInput=${coinData.tokenAddress.toLowerCase()}&tokenAddressOutput=${coinFromData.tokenAddress.toLowerCase()}`;
+          const fromUrl = `https://swap.thetatoken.org/swap?tokenAddressInput=${coinFromData.tokenAddress.toLowerCase()}&tokenAddressOutput=${coinData.tokenAddress.toLowerCase()}`;
 
 
           $('#ulCoinReport2').empty();

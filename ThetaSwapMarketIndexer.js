@@ -140,7 +140,7 @@ class ThetaSwapMarketIndexer {
 
                     if (this.tfuelPriceHistory.length > 0) lastTfuel = this.tfuelPriceHistory[this.tfuelPriceHistory.length - 1].price;
                     if (tfuel != lastTfuel)
-                        this.tfuelPriceHistory.push({ last_updated: new Date(tfuel.last_updated), price: tfuel });
+                        this.tfuelPriceHistory.push({ last_updated: new Date(), price: tfuel });
                 }
             }).catch((err) => {
 
@@ -162,7 +162,7 @@ class ThetaSwapMarketIndexer {
 
                     if (this.thetaPriceHistory.length > 0) lastTheta = this.thetaPriceHistory[this.thetaPriceHistory.length - 1].price;
                     if (theta != lastTheta)
-                        this.thetaPriceHistory.push({ last_updated: new Date(theta.last_updated), price: theta });
+                        this.thetaPriceHistory.push({ last_updated: new Date(), price: theta });
                 }
             }).catch((err) => {
 
