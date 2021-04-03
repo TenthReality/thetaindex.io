@@ -5,23 +5,30 @@ const fs = require('fs').promises;
 
 
 const TIMER_SAVEDATA = 5;
-const TIMER_UPDATEFUELPRICE = 10;
+const TIMER_UPDATEFUELPRICE = 5;
 const TIMER_DISCOVERYNEWPAIR = 30;
 const TIMER_UPDATERESERVES = 5;
-const TIMER_UPDATEPRICES = 10;
+const TIMER_UPDATEPRICES = 5;
+
+const CLOUD_DEPLOY = true;
+const USE_BINANCE = true;
+
 
 async function init() {
     await indexer.Initialize();
-    //await indexer.DiscoverNewPairs();
 }
 
 init().then(a => {
     setInterval(() => {
-        indexer.saveData();
+        if(CLOUD_DEPLOY)
+            indexer.saveDataCloud();
     }, 60000 * TIMER_SAVEDATA);
 
     setInterval(() => {
-        indexer.UpdateTfuelPrice();
+        if(USE_BINANCE)
+            indexer.UpdateTfuelPriceBinance();
+        else
+            indexer.UpdateTfuelPrice();
     }, 60000 * TIMER_UPDATEFUELPRICE);
 
     setInterval(() => {
@@ -75,7 +82,7 @@ app.get('/api/pairs', (req, res) => {
 app.get('/api/tfuel', (req, res) => {
     res.setHeader('content-type', 'application/json');
     res.send(JSON.stringify(indexer.tfuelPriceHistory));
-});
+});indexer.reserveHistory.filter(a => a.id == req.params.id)
 
 app.get('/api/theta', (req, res) => {
     res.setHeader('content-type', 'application/json');
@@ -97,14 +104,13 @@ app.get('/api/coin/:id', (req, res) => {
     res.send(JSON.stringify(indexer.coins.find(a => a.id == req.params.id)));
 });
 
-
 app.get('/api/liquidity', (req, res) => {
     res.setHeader('content-type', 'application/json');
     indexer.LiquidityReport().then(a => {
         res.send(JSON.stringify(a));
     });
 });
-const PORT = process.env.PORT || 8090;
+const PORT = process.env.PORT || 8080;
 app.listen(PORT, function () {
-    console.log(`Up and listening on port ${PORT}`)
+    console.log(`thetaindex.io started and listening on port ${PORT}`)
 });

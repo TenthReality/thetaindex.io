@@ -11,7 +11,9 @@ const ThetaSwapContractABI = fs.readFileSync('ThetaSwapABI.txt', 'utf8');
 const FactoryABI = fs.readFileSync('ThetaFactoryABI.txt', 'utf8');
 const provider = new thetajs.providers.HttpProvider();
 const crypto = require("crypto");
-
+const { Storage } = require('@google-cloud/storage');
+const storage = new Storage();
+const bucket = storage.bucket("thetaindexio_datastore");
 class ThetaSwapMarketIndexer {
     constructor() {
         this.coins = new Array();
@@ -26,7 +28,7 @@ class ThetaSwapMarketIndexer {
     }
 
     async Initialize() {
-        this.loadData();    // load data
+        this.loadDataCloud();    // load data
 
         if (this.isFirstStart) {
             console.log(`[Initialize] - First Start.  Begining with Pair detection + initial price discovery.`);
@@ -58,6 +60,23 @@ class ThetaSwapMarketIndexer {
         }
     }
 
+
+    loadDataCloud() {
+        const blob = bucket.file("data.json");
+        let pnt = this;
+        blob.download().then(function (data) {
+            const contents = data[0];
+            const obj = JSON.parse(contents);
+            pnt.coins = obj.coins;
+            pnt.pairs = obj.pairs;
+            pnt.priceHistory = obj.priceHistory;
+            pnt.tfuelPriceHistory = obj.tfuelPriceHistory;
+            pnt.thetaPriceHistory = obj.thetaPriceHistory;
+            pnt.allPairsLengthLast = obj.allPairsLengthLast;
+            pnt.reserveHistory = obj.reserveHistory;
+        });
+    }
+
     saveData() {
         let obj = {
             coins: this.coins,
@@ -76,21 +95,40 @@ class ThetaSwapMarketIndexer {
         });
     }
 
-    UpdateTfuelPrice() {
-        const url = "https://explorer.thetatoken.org:9000/api/price/all";
+    saveDataCloud() {
+        let obj = {
+            coins: this.coins,
+            pairs: this.pairs,
+            priceHistory: this.priceHistory,
+            tfuelPriceHistory: this.tfuelPriceHistory,
+            thetaPriceHistory: this.thetaPriceHistory,
+            allPairsLengthLast: this.allPairsLengthLast,
+            reserveHistory: this.reserveHistory
+        };
+        let data = JSON.stringify(obj, null, 2);
 
+        const blob = bucket.file("data.json");
+
+        const blobStream = blob.createWriteStream({
+            resumable: false,
+        });
+        blobStream.end(data);
+    }
+
+    UpdateTfuelPriceBinance() {
+        const url = "https://www.binance.com/api/v3/depth?symbol=TFUELUSDT&limit=10";
+        const url2 = "https://www.binance.com/api/v3/depth?symbol=THETAUSDT&limit=10";
         const settings = { method: "Get" };
-
+        console.log(`[UpdateTfuelPrice] -  starting`);
+        //get tfuel price
         fetch(url, settings)
             .then(res => res.json())
             .then((json) => {
-                if (json != null && json.body != null && json.body.length > 0) {
+                if (json != null) {
 
-                    const tfuel = json.body.find(a=>a._id == "TFUEL");
-                    const theta = json.body.find(a=>a._id == "THETA");
+                    const tfuel = parseFloat(json.bids[0][0]);
 
-                    console.log(`[UpdateTfuelPrice] -  ${tfuel.price}`);
-
+                    console.log(`[UpdateTfuelPrice] -  tfuel price ${tfuel}`);
                     if (this.tfuelPriceHistory.length > 50) {
                         this.tfuelPriceHistory = this.tfuelPriceHistory.slice(1);
                     }
@@ -100,56 +138,123 @@ class ThetaSwapMarketIndexer {
                     }
                     let lastTfuel = 0;
 
-                    if(this.tfuelPriceHistory.length > 0) lastTfuel = this.tfuelPriceHistory[this.tfuelPriceHistory.length-1].price;
-                    if(tfuel.price != lastTfuel)
+                    if (this.tfuelPriceHistory.length > 0) lastTfuel = this.tfuelPriceHistory[this.tfuelPriceHistory.length - 1].price;
+                    if (tfuel != lastTfuel)
+                        this.tfuelPriceHistory.push({ last_updated: new Date(tfuel.last_updated), price: tfuel });
+                }
+            }).catch((err) => {
+
+                console.log(`[UpdateTfuelPrice] -  ${err}`);
+            });
+        //get theta price
+        fetch(url2, settings)
+            .then(res => res.json())
+            .then((json) => {
+                if (json != null) {
+
+                    const theta = parseFloat(json.bids[0][0]);
+                    console.log(`[UpdateTfuelPrice] -  theta price ${theta}`);
+                    if (this.thetaPriceHistory.length > 50) {
+                        this.thetaPriceHistory = this.thetaPriceHistory.slice(1);
+                    }
+
+                    let lastTheta = 0;
+
+                    if (this.thetaPriceHistory.length > 0) lastTheta = this.thetaPriceHistory[this.thetaPriceHistory.length - 1].price;
+                    if (theta != lastTheta)
+                        this.thetaPriceHistory.push({ last_updated: new Date(theta.last_updated), price: theta });
+                }
+            }).catch((err) => {
+
+                console.log(`[UpdateTfuelPrice] -  ${err}`);
+            });
+
+    }
+
+    UpdateTfuelPrice() {
+        const url = "https://explorer.thetatoken.org:9000/api/price/all";
+
+        const settings = { method: "Get" };
+        console.log(`[UpdateTfuelPrice] -  starting`);
+
+        fetch(url, settings)
+            .then(res => res.text())
+            .then((text) => {
+                console.log(text);
+            }).catch((err2) => { console.log(`[UpdateTfuelPrice] -  ${err}`); });
+
+
+        fetch(url, settings)
+            .then(res => res.json())
+            .then((json) => {
+                if (json != null && json.body != null && json.body.length > 0) {
+
+                    const tfuel = json.body.find(a => a._id == "TFUEL");
+                    const theta = json.body.find(a => a._id == "THETA");
+
+
+                    console.log(`[UpdateTfuelPrice] -  ${tfuel.price}`);
+                    if (this.tfuelPriceHistory.length > 50) {
+                        this.tfuelPriceHistory = this.tfuelPriceHistory.slice(1);
+                    }
+
+                    if (this.thetaPriceHistory.length > 50) {
+                        this.thetaPriceHistory = this.thetaPriceHistory.slice(1);
+                    }
+                    let lastTfuel = 0;
+
+                    if (this.tfuelPriceHistory.length > 0) lastTfuel = this.tfuelPriceHistory[this.tfuelPriceHistory.length - 1].price;
+                    if (tfuel.price != lastTfuel)
                         this.tfuelPriceHistory.push({ last_updated: new Date(tfuel.last_updated), price: tfuel.price });
 
 
                     let lastTheta = 0;
 
-                    if(this.thetaPriceHistory.length > 0) lastTheta = this.thetaPriceHistory[this.thetaPriceHistory.length-1].price;
-                    if(theta.price != lastTheta)
+                    if (this.thetaPriceHistory.length > 0) lastTheta = this.thetaPriceHistory[this.thetaPriceHistory.length - 1].price;
+                    if (theta.price != lastTheta)
                         this.thetaPriceHistory.push({ last_updated: new Date(theta.last_updated), price: theta.price });
                 }
-            }).catch((err) => { });
+            }).catch((err) => {
+
+                console.log(`[UpdateTfuelPrice] -  ${err}`);
+            });
     }
 
     getReserve24h(reserves) {
         const yesterday = new Date(new Date().getTime() - (24 * 60 * 60 * 1000));
-      
-        const twentyFour = reserves.filter((a) => {
-          var d = new Date(a.date);
-          return d > yesterday;
-        });
-        return twentyFour;
-      }
-      
-      getReserveOlder24h(reserves) {
-        const yesterday = new Date(new Date().getTime() - (24 * 60 * 60 * 1000));
-      
-        const twentyFour = reserves.filter((a) => {
-          var d = new Date(a.date);
-          return d < yesterday;
-        });
-        return twentyFour;
-      }   
-      
-      getHistOlder24h(hist) {
-        const yesterday = new Date(new Date().getTime() - (24 * 60 * 60 * 1000));
-      
-        const twentyFour = hist.filter((a) => {
-          var d = new Date(a.date);
-          return d < yesterday;
-        });
-        return twentyFour;
-      }          
 
-    async UpdatePairReserves()
-    {
+        const twentyFour = reserves.filter((a) => {
+            var d = new Date(a.date);
+            return d > yesterday;
+        });
+        return twentyFour;
+    }
+
+    getReserveOlder24h(reserves) {
+        const yesterday = new Date(new Date().getTime() - (24 * 60 * 60 * 1000));
+
+        const twentyFour = reserves.filter((a) => {
+            var d = new Date(a.date);
+            return d < yesterday;
+        });
+        return twentyFour;
+    }
+
+    getHistOlder24h(hist) {
+        const yesterday = new Date(new Date().getTime() - (24 * 60 * 60 * 1000));
+
+        const twentyFour = hist.filter((a) => {
+            var d = new Date(a.date);
+            return d < yesterday;
+        });
+        return twentyFour;
+    }
+
+    async UpdatePairReserves() {
         console.log(`[UpdatePairReserves] - Reserve Update starting.`);
         for (let i = 0; i < this.pairs.length; i++) {
-            try{
-                const pair =  this.pairs[i];
+            try {
+                const pair = this.pairs[i];
                 let pairContract = new thetajs.Contract(this.pairs[i].pairAddress, ThetaPairABI, provider);
                 const reserves = await pairContract.getReserves();
 
@@ -157,37 +262,41 @@ class ThetaSwapMarketIndexer {
                 const coin1 = this.findCoin(pair.to);
                 const tenfrom = (1 * Math.pow(10, coin0.decimals));
                 const tento = (1 * Math.pow(10, coin1.decimals));
-                
+
                 const r0 = (reserves.reserve0 / tenfrom).toString();
                 const r1 = (reserves.reserve1 / tento).toString();
 
-                const totalHist =this.reserveHistory.filter(a=>a.id == pair.id);
+                const totalHist = this.reserveHistory.filter(a => a.id == pair.id);
+                let lastReserveHist = null;
+
+
+                if (totalHist != null && totalHist.length > 0) {
+                    lastReserveHist = totalHist[totalHist.length - 1];
+                }
+
                 const reserve24 = this.getReserve24h(totalHist);
+                //make two checks, the first handles if we've potential got a liquidity change
+                //the other handles if a swap happened
+                const lastReserveMisMatch = (lastReserveHist != null && (r0 != lastReserveHist.reserves0 || r1 != lastReserveHist.reserves1));
+                const currentReserveMisMatch = (r0 != pair.reserves0 || r1 != pair.reserves1);
 
-                if(r0 != pair.reserves0 || r1 !=  pair.reserves1)
-                {
-                    console.log(`[UpdatePairReserves] - Reserve Update on ${coin0.symbol}:${coin1.symbol} ${r0}-${r1}`);
+                if (currentReserveMisMatch || lastReserveMisMatch) {
+                    console.log(`[UpdatePairReserves] - Reserve Update on ${coin0.symbol}:${coin1.symbol} ${r0}-${r1}  old value ${pair.reserves0}:${pair.reserves1}`);
 
-                    this.reserveHistory.push({id:pair.id, date:new Date(), reserves0:pair.reserves0,reserves1:pair.reserves1});
+                    this.reserveHistory.push({ id: pair.id, date: new Date(), reserves0: pair.reserves0, reserves1: pair.reserves1 });
 
 
                     const olderThan24 = this.getReserveOlder24h(totalHist);
 
-                    // this.reserveHistory = this.reserveHistory.filter( function( el ) {
-                    //     return !olderThan24.includes( el );
-                    //   } );                    
-
-               
                     pair.reserves0 = (reserves.reserve0 / tenfrom).toString();
                     pair.reserves1 = (reserves.reserve1 / tento).toString();
-                                                        
+
                 }
-                if(!this.isFirstStart)
+                if (!this.isFirstStart)
                     pair.swaps = reserve24.length;
-                await this.snooze(800);
+                await this.snooze(1500);
             }
-            catch(ex)
-            {
+            catch (ex) {
                 console.log("[UpdatePairReserves]" + ex);
             }
         }
@@ -249,14 +358,14 @@ class ThetaSwapMarketIndexer {
                     const tenfrom = (1 * Math.pow(10, coin0.decimals));
                     const tento = (1 * Math.pow(10, coin1.decimals));
 
-                    const newPair = { id: uuid, pairAddress: currentPairContractAddress, short: coin0.symbol + ":" + coin1.symbol, from: coin0.id, to: coin1.id, fromSym: coin0.symbol, toSym: coin1.symbol, reserves0: (reserves.reserve0 / tenfrom).toString(), reserves1: (reserves.reserve1 / tento).toString(), tfuelvalue: 0, last: 0, usdlast: 0, preusd: 0, prevLast: 0, change: 0, usdchange: 0, swaps:0 };
+                    const newPair = { id: uuid, pairAddress: currentPairContractAddress, short: coin0.symbol + ":" + coin1.symbol, from: coin0.id, to: coin1.id, fromSym: coin0.symbol, toSym: coin1.symbol, reserves0: (reserves.reserve0 / tenfrom).toString(), reserves1: (reserves.reserve1 / tento).toString(), tfuelvalue: 0, last: 0, usdlast: 0, preusd: 0, prevLast: 0, change: 0, usdchange: 0, swaps: 0 };
                     console.log(`[DiscoverNewPairs] - New Pair ${this.findCoin(newPair.from).symbol} - ${this.findCoin(newPair.to).symbol}`);
                     this.pairs.push(newPair);
-                    this.reserveHistory.push({id:newPair.id, date:new Date(), reserves0:newPair.reserves0,reserves1:newPair.reserves1});
+                    this.reserveHistory.push({ id: newPair.id, date: new Date(), reserves0: newPair.reserves0, reserves1: newPair.reserves1 });
                 }
 
-                await this.snooze(600);
-                this.allPairsLengthLast = i+1;
+                await this.snooze(900);
+                this.allPairsLengthLast = i + 1;
             }
             catch (ex) {
                 //if we error on discovery, break out and set to max number to pick up again later in case of API timeout/offline/error
@@ -277,7 +386,7 @@ class ThetaSwapMarketIndexer {
             let To = this.findCoin(pair.to);
             if (To.symbol != "TFUEL" && From.symbol == "TFUEL") { continue; }
             if (To.symbol == "TFUEL") {
-                let liquidity1 =  pair.reserves1;
+                let liquidity1 = pair.reserves1;
 
                 if (liquidity1 > 0)
                     retVal.push({ to: To.symbol, from: From.symbol, liquidity: liquidity1 });
@@ -292,7 +401,10 @@ class ThetaSwapMarketIndexer {
 
         let l0map = retVal.map(a => a.liquidity);
         const reducer = (accumulator, currentValue) => accumulator + currentValue;
-        let l0sum = l0map.reduce(reducer);
+
+        let l0sum = 0;
+        if (l0map != null && l0map.length > 0)
+            l0sum = l0map.reduce(reducer);
 
         return {
             total_tfuel_liquidity: l0sum,
@@ -359,15 +471,15 @@ class ThetaSwapMarketIndexer {
                             //pair.usdlast = 0;
                         }
                         let tmpHist = this.getHistOlder24h(hist.history);
-                        let whatsleft = hist.history.filter( function( el ) {
-                            return !tmpHist.includes( el );
-                          } );   
+                        let whatsleft = hist.history.filter(function (el) {
+                            return !tmpHist.includes(el);
+                        });
                         hist.history = whatsleft;
                         hist.history.push({ date: currentDate, toPrice: priceResult.toPrice, fromPrice: priceResult.fromPrice, tprice: tprice.price, usdprice: usprice });
 
                     }
                 });
-                await this.snooze(150);
+                await this.snooze(400);
             }
         }
         catch (ex) {
@@ -375,18 +487,15 @@ class ThetaSwapMarketIndexer {
         }
     }
 
-    discoverExitPair(pair)
-    {
+    discoverExitPair(pair) {
         let hasTfuelExit = false;
         const coinMap = [this.findCoin(pair.to).id, this.findCoin(pair.from).id];
-        const tfuelId = this.coins.find(a=>a.symbol == "TFUEL").id;
+        const tfuelId = this.coins.find(a => a.symbol == "TFUEL").id;
 
-        for(let i=0; i<coinMap.length; i++)
-        {
+        for (let i = 0; i < coinMap.length; i++) {
             let coinToMap = this.findCoin(coinMap[i]);
-            let matchingExitPair = this.pairs.find(a=>(a.from == tfuelId || a.to == tfuelId) && (a.from == coinMap[i] || a.to == coinMap[i]));
-            if(matchingExitPair != null)
-            {
+            let matchingExitPair = this.pairs.find(a => (a.from == tfuelId || a.to == tfuelId) && (a.from == coinMap[i] || a.to == coinMap[i]));
+            if (matchingExitPair != null) {
                 //found an exit pair;
                 hasTfuelExit = true;
             }
